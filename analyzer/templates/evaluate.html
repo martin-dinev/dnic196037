@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CodeHelper SmartStrings</title>
+    {% load static %}
+    <script src="{% static 'codemirror-5.65.8/lib/codemirror.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'codemirror-5.65.8/lib/codemirror.css' %}">
+    <script src="{% static 'codemirror-5.65.8/mode/clike/clike.js' %}"></script>
+    <link href="{% static 'bootstrap-5.2.0-dist/css/bootstrap.css' %}" rel="stylesheet">
+    <script src="{% static 'bootstrap-5.2.0-dist/js/bootstrap.bundle.js' %}"></script>
+</head>
+<body>
+{# FORMS #}
+<div>
+    {# RETURN TO EDITOR #}
+    <form id="return_to_editor_form" action="/" method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="code" value=""/>
+        <input type="hidden" name="compiled" value="0"/>
+    </form>
+</div>
+<section class="container-fluid bg-primary min-vh-100 align-items-center d-flex px-0 flex-wrap">
+
+    {# BUTTONS NAVBAR #}
+    <div class="container-fluid align-items-center d-flex justify-content-around" style="height: 10vh">
+
+        {# RETURN TO EDITOR #}
+        <button type="button" onclick="return_to_editor_form();"
+                class="btn btn-light"> Return to editor
+        </button>
+
+
+        <button type="button" class="btn btn-light disabled">
+            Run Code <span class="h6">#soon, it's coming slowly</span>
+        </button>
+    </div>
+
+    {# CODE MIRROR #}
+    <style>
+        .CodeMirror {
+            padding-left: 0;
+            padding-right: 0;
+            height: 100%;
+        }
+    </style>
+    <div class="container-fluid px-0" style="height: 90vh">
+        <div class="h-100" id="text_area" style="margin-top: 0;"></div>
+    </div>
+
+</section>
+
+{# FORM SCRIPTS #}
+<script>
+    function return_to_editor_form() {
+        let my_form = document.forms['return_to_editor_form'];
+        my_form.elements["code"].value = myCodeMirror.getValue();
+        document.getElementById("return_to_editor_form").submit();
+    }
+</script>
+
+{# CODE MIRROR SCRIPTS #}
+<script>
+    let myCodeMirror = CodeMirror(document.getElementById('text_area'), {
+        value: `{{ code|default:"#include<iostream>\nusing namespace std;\nint main() {\n\t\n}\n"|safe}}`,
+        indentUnit: 4,
+        lineNumbers: true,
+        styleActiveLine: {nonEmpty: true},
+        matchBrackets: true,
+        mode: 'text/x-c++src',
+        readOnly: true,
+        gutters: ["CodeMirror-linenumbers", {"className": "buttons", "style": "width:18px;"}],
+    });
+    myCodeMirror.setSize("100%", "100%");
+</script>
+
+{# LINES SCRIPTS #}
+<style>
+
+    .CodeMirror-code > div div.buttons-gutter.other-marker {
+        visibility: hidden;
+        background-color: #0dcaf0;
+    }
+    .CodeMirror-code > div:hover div.buttons-gutter.other-marker {
+        visibility: visible;
+        background-color: #0dcaf0;
+    }
+
+    .CodeMirror-code > div div.buttons-gutter:not(.other-marker) {
+        visibility: visible;
+        background-color: yellow;
+    }
+    .CodeMirror-code > div:hover div.buttons-gutter:not(.other-marker) {
+        visibility: visible;
+        background-color: #0dcaf0;
+    }
+
+    .CodeMirror-code > div div.buttons-gutter {
+        visibility: hidden;
+    }
+
+
+    .CodeMirror-code .buttons-gutter .dropdown-toggle {
+        color: black;
+        background-color: inherit;
+    }
+</style>
+<script src="{% static 'markers.js' %}"></script>
+<script>
+
+    function makeButtonMarker(n, line_type) {
+        var marker;
+        if (line_type === "for")
+            marker = for_marker();
+        else if (line_type === "if")
+            marker = if_marker();
+        else if (line_type === "main")
+            marker = main_marker();
+        else if (line_type === "int")
+            marker = int_marker();
+        else
+            marker = other_marker();
+        myCodeMirror.getDoc().setGutterMarker(n, "buttons", marker);
+    }
+    {% for line in lines %}
+        makeButtonMarker({{ forloop.counter0 }}, "{{ line }}");
+    {% endfor %}
+
+</script>
+
+</body>
+</html>

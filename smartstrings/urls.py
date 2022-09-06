@@ -16,9 +16,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 
-from analyzer.views import welcome
+from analyzer.views import welcome, evaluation_service
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("", welcome)
+    path("", welcome),
+    path("evaluate", evaluation_service)
+
 ]
