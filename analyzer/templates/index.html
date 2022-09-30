@@ -127,7 +127,17 @@
         myCodeMirror.off("change", code_changed);
     }
 
+    {# TODO remove this, it's just for debugging #}
+    {#    {% if logic.compiled %}#}
+    {#        console.log({{ logic.executable|safe }})#}
+    {#    {% endif %}#}
 </script>
 
+{% if logic.compiled == False %}
+    <div class="alert alert-warning alert-dismissible fade show position-absolute end-0 bottom-0" role="alert">
+        {{ logic.message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+{% endif %}
 </body>
 </html>
