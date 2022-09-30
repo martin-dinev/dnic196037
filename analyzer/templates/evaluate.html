@@ -11,13 +11,15 @@
     <script src="{% static 'bootstrap-5.2.0-dist/js/bootstrap.bundle.js' %}"></script>
 </head>
 <body>
+
+
 {# FORMS #}
 <div>
     {# RETURN TO EDITOR #}
     <form id="return_to_editor_form" action="/" method="POST">
         {% csrf_token %}
         <input type="hidden" name="code" value=""/>
-        <input type="hidden" name="compiled" value="0"/>
+{#        <input type="hidden" name="compiled" value="0"/>#}
     </form>
 </div>
 <section class="container-fluid bg-primary min-vh-100 align-items-center d-flex px-0 flex-wrap">
@@ -81,6 +83,7 @@
         visibility: hidden;
         background-color: #0dcaf0;
     }
+
     .CodeMirror-code > div:hover div.buttons-gutter.other-marker {
         visibility: visible;
         background-color: #0dcaf0;
@@ -90,13 +93,16 @@
         visibility: visible;
         background-color: yellow;
     }
+
     .CodeMirror-code > div:hover div.buttons-gutter:not(.other-marker) {
         visibility: visible;
         background-color: #0dcaf0;
     }
 
-    .CodeMirror-code > div div.buttons-gutter {
-        visibility: hidden;
+    .CodeMirror-code div.buttons-gutter:hover > .dropdown-menu {
+        display: block;
+        left: 100%;
+
     }
 
 
@@ -104,12 +110,16 @@
         color: black;
         background-color: inherit;
     }
+
+    .submenu:hover > .dropdown-submenu {
+        display: block;
+    }
 </style>
 <script src="{% static 'markers.js' %}"></script>
 <script>
 
     function makeButtonMarker(n, line_type) {
-        var marker;
+        let marker;
         if (line_type === "for")
             marker = for_marker();
         else if (line_type === "if")
@@ -122,9 +132,33 @@
             marker = other_marker();
         myCodeMirror.getDoc().setGutterMarker(n, "buttons", marker);
     }
+
+    function gutterWidth() {
+        return myCodeMirror.getGutterElement().clientWidth;
+    }
+
+    function addVariableWidget(n) {
+        let currentLine = myCodeMirror.getDoc().getLine(n);
+        let int_position = currentLine.indexOf("int");
+        let int_declaration_end = int_position + currentLine.slice(int_position).indexOf(";");
+        currentLine = currentLine.slice(int_position, int_declaration_end);
+
+        let offset = myCodeMirror.charCoords({"line": n, "ch": int_position}).left - gutterWidth();
+
+        currentLine.trim().slice(4).trim().split(",").map(p => p.split("=").map(it => it.trim()))
+            .map(p => ({"name": p[0], "value": (p.size === 1 ? "undef" : p[1])}))
+            .forEach(p => {
+                myCodeMirror.getDoc().addLineWidget(n, int_widget(p.name, p.value, offset));
+            });
+    }
+
     {% for line in lines %}
         makeButtonMarker({{ forloop.counter0 }}, "{{ line }}");
+        {% if line == "int" or line == "for" %}
+            addVariableWidget({{ forloop.counter0 }});
+        {% endif %}
     {% endfor %}
+
 
 </script>
 

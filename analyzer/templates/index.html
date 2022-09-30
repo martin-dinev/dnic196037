@@ -55,13 +55,13 @@
 
         {# COMPILE #}
         <button type="button" onclick="compile_form();" id="compile_button"
-                class="btn {% if not compiled or compiled == '0' %}btn-light{% elif compiled == -1 %}btn-warning{% elif compiled == 1 %}btn-success{% endif %}">
+                class="{{ logic.get_compile_button_class }}">
             Compile
         </button>
 
         {# EVALUATE #}
         <button type="button" onclick="evaluate_form();" id="evaluate_button"
-                class="btn {% if compiled == 1 %} btn-primary  {% else %} btn-danger disabled{% endif %}">
+                class="{{ logic.get_evaluate_button_class }}">
             Evaluate
         </button>
 
@@ -76,7 +76,7 @@
 {# SCRIPTS #}
 <script>
     let myCodeMirror = CodeMirror(document.getElementById('text_area'), {
-        value: `{{ code|default:"#include<iostream>\nusing namespace std;\nint main() {\n\t\n}\n"|safe}}`,
+        value: `{{ code|default:logic.get_default_code|safe}}`,
         indentUnit: 4,
         lineNumbers: true,
         styleActiveLine: {nonEmpty: true},
