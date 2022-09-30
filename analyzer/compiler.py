@@ -4,7 +4,7 @@ from itertools import takewhile
 
 IOSTREAM_LINE = "#include <iostream>"
 BRACKETS = {"{": "}", "(": ")"}
-MULTI_CHARS_OPERATORS = ("++", "--", "<=", ">=", "+=", "-=", "*=", "/=", "%=")
+MULTI_CHARS_OPERATORS = ("++", "--", "==", "<=", ">=", "+=", "-=", "*=", "/=", "%=")
 SINGLE_CHAR_OPERATORS = ("-", "+", "*", "/", "%", ">", "<", ";", "=")
 EXPRESSION_TERMINATORS = (";", ",", ")")
 
@@ -14,6 +14,7 @@ OPERATORS = {
     "assignment_operators": ("=", "+=", "-=", "*=", "/=", "%="),
     "first_operators": ("*", "/", "%"),
     "second_operators": ("+", "-"),
+    "boolean_operators": ("<=", ">=", ">", "<", "=="),
 }
 
 
@@ -53,6 +54,13 @@ def parse_code(code):  # returns (success, message, runnable)
         code_pos = fragment_position + len(fragment)
         return line
 
+    def move_line():
+        nonlocal line, code_pos, code
+        fragment_position = code.find(tokens[0], code_pos)
+        line += code[code_pos:fragment_position].count('\n')
+        code_pos = fragment_position
+        return line
+
     increment_line(IOSTREAM_LINE)
     increment_line(";")  # using namespace std ->;<-
     increment_line(")")  # int main( ->)<-
@@ -64,8 +72,6 @@ def parse_code(code):  # returns (success, message, runnable)
         return var_name[0].isalpha() and var_name.isalnum() and var_name in variable_names
 
     def compile_expression_from_tokens(expression_tokens):
-        # todo removbe this is for debug
-        # print(expression_tokens)
         expression_size = len(expression_tokens)
         expression = {"kind": "expression", "exec": dict(), "line": line}
         data = expression["exec"]
@@ -134,6 +140,7 @@ def parse_code(code):  # returns (success, message, runnable)
                     else:
                         if not is_active_variable(token) and not token.isnumeric():
                             raise MyException("I don't understand the token " + token)
+
             if not assignment_present:
                 if latest_second != -1:
                     if latest_second == 0 or latest_second == len(expression_tokens) - 1:
@@ -160,6 +167,50 @@ def parse_code(code):  # returns (success, message, runnable)
 
         return expression
 
+    def compile_condition_from_tokens(condition_tokens):
+        condition_size = len(condition_tokens)
+        condition = {"kind": "condition", "exec": dict(), "line": line}
+        data = condition["exec"]
+        if condition_size == 0:
+            raise MyException("don't know what to do with empty condition")
+        else:
+            level = 0
+            level_zero_tokens = 0
+            found = -1
+
+            for i, token in enumerate(condition_tokens):
+                if token == "(":
+                    level += 1
+                elif token == ")":
+                    if level == 0:
+                        raise MyException("no matching '(' for ')'")
+                    level -= 1
+                elif level == 0:
+                    level_zero_tokens += 1
+                    if token in OPERATORS["assignment_operators"]:
+                        raise MyException("return value of assignment operators is not boolean")
+                    if token in OPERATORS["boolean_operators"]:
+                        if found == -1:
+                            found = i
+                        else:
+                            raise MyException("more than one boolean operators found")
+
+            if found != -1:
+                if found == 0 or found == len(condition_tokens) - 1:
+                    raise MyException(
+                        "binary operator " + condition_tokens[found] + " should have two operands")
+                else:
+                    data["kind"] = "boolean"
+                    data["sub"] = condition_tokens[found]
+                    data["left"] = compile_expression_from_tokens(condition_tokens[0:found])
+                    data["right"] = compile_expression_from_tokens(condition_tokens[found + 1:])
+            elif level_zero_tokens == 0:
+                condition = compile_expression_from_tokens(condition_tokens[1:-1])
+            else:
+                raise MyException("need an operator in non unary expressions")
+
+        return condition
+
     def compile_expression():
         level = 0
 
@@ -173,13 +224,33 @@ def parse_code(code):  # returns (success, message, runnable)
 
         expression_size = next(i for i, t in enumerate(tokens) if should_terminate(i, t))
         expression_tokens = tokens[:expression_size]
+        move_line()
         compiled_expression = compile_expression_from_tokens(expression_tokens)
         for i in range(expression_size):
             increment_line(tokens[0])
         return compiled_expression
 
+    def compile_condition():
+        level = 0
+
+        def should_terminate(ind, t):
+            nonlocal level
+            if tokens[ind] == '(':
+                level += 1
+            elif tokens[ind] == ')':
+                level -= 1
+            return t in EXPRESSION_TERMINATORS and (t != ")" or level == -1)
+
+        condition_size = next(i for i, t in enumerate(tokens) if should_terminate(i, t))
+        condition_tokens = tokens[:condition_size]
+        move_line()
+        compiled_condition = compile_condition_from_tokens(condition_tokens)
+        for i in range(condition_size):
+            increment_line(tokens[0])
+        return compiled_condition
+
     def compile_variable_declaration():
-        result = {"kind": "new_variable", "exec": dict(), "line": -1}
+        result = {"kind": "new_int", "exec": dict(), "line": -1}
         result["exec"]["name"] = tokens[0]
         result["line"] = increment_line(tokens[0])
 
@@ -206,25 +277,38 @@ def parse_code(code):  # returns (success, message, runnable)
                     increment_line(",")
             increment_line(";")
         elif tokens[0] == "for":
-            increment_line(")")
-            compile_scope()
-            # raise MyException("I still don't know how to compile for")
-        elif tokens[0] == "if":
-            increment_line(")")
-            compile_scope()
-            # raise MyException("I still don't know how to compile if")
-        elif tokens[0] == "while":
-            increment_line(")")
-            compile_scope()
-            # raise MyException("I still don't know how to compile while")
-        else:
-            result["kind"] = "expression"
-            result["exec"] = compile_expression()
-            result["line"] = increment_line(";")
+            result["kind"] = "for"
+            result["line"] = increment_line("(")
 
-        # TODO remove this it is for debug
-        # json.dump(result, sys.stdout)
-        # print()
+            scope_variables_counts.append(0)
+
+            result["exec"].append(compile_element())
+            result["exec"].append(compile_condition())
+            increment_line(";")
+            result["exec"].append(compile_expression())
+            increment_line(")")
+            result["exec"].append(compile_scope())
+
+            while scope_variables_counts[-1] > 0:
+                scope_variables_counts[-1] -= 1
+                variable_names.pop()
+            scope_variables_counts.pop()
+        elif tokens[0] == "if":
+            result["kind"] = "if"
+            result["line"] = increment_line("(")
+            result["exec"].append(compile_condition())
+            increment_line(")")
+            result["exec"].append(compile_scope())
+        elif tokens[0] == "while":
+            result["kind"] = "while"
+            result["line"] = increment_line("(")
+            result["exec"].append(compile_condition())
+            increment_line(")")
+            result["exec"].append(compile_scope())
+        else:
+            result = compile_expression()
+            increment_line(";")
+
         return result
 
     def compile_scope():
@@ -237,6 +321,7 @@ def parse_code(code):  # returns (success, message, runnable)
                 result["exec"].append(element)
             increment_line("}")
         else:
+            result["line"] = move_line()
             result["exec"].append(compile_element())
         while scope_variables_counts[-1] > 0:
             scope_variables_counts[-1] -= 1
@@ -250,6 +335,9 @@ def parse_code(code):  # returns (success, message, runnable)
     except MyException as e:
         return False, "line " + str(line + 1) + ":" + str(e) + \
                " It appears somewhere before: " + " ".join(tokens[:5]), []
+
+    json.dump(compiled_code, sys.stdout)
+    print()
 
     if len(tokens) != 0:
         return False, "there must not be code out of main scope", compiled_code

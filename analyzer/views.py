@@ -16,7 +16,7 @@ int main() {
         x=12;
     int sum = 0;
     for(int i = 1 ; i <= 5 ; i ++){
-        sum += x*i - x/2;
+        sum += x*(i+2) - x/2;
         x -= 2;
     }
 }
