@@ -11,9 +11,10 @@ int main() {
 default_evaluate_code = """#include <iostream>
 using namespace std;
 int main() {
-    int x = 16, y, z=123;
+    int x = 15, y, z=123;
+    y = 1;
     if(x>12)
-        x=12;
+        x = x/2;
     int sum = 0;
     for(int i = 1 ; i <= 5 ; i ++){
         sum += x*(i+2) - x/2;
@@ -61,6 +62,8 @@ def evaluation_service(request):
     if not compiled:
         return redirect("/")
 
+    compiled, message, runnable = parse_code(default_evaluate_code)
+
     code = default_evaluate_code + "\n//Above is an example code. Here is the code that you compiled:\n" + code
 
     lines = [
@@ -69,6 +72,7 @@ def evaluation_service(request):
     ]
     context = {
         "code": code,
-        "lines": lines
+        "lines": lines,
+        "runnable": runnable
     }
     return render(request, "evaluate.html", context=context)

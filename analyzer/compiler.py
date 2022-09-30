@@ -83,13 +83,13 @@ def parse_code(code):  # returns (success, message, runnable)
                 data["value"] = int(expression_tokens[0])
             elif is_active_variable(expression_tokens[0]):
                 data["kind"] = "variable_access"
-                data["value"] = expression_tokens[0]
+                data["name"] = expression_tokens[0]
             else:
                 raise MyException("was expecting a number or a declared variable name")
         elif expression_size == 2:
             if expression_tokens[0] in OPERATORS["leading_unary_operators"]:
                 if is_active_variable(expression_tokens[1]):
-                    data["kind"] = "leading unary"
+                    data["kind"] = "leading_unary"
                     data["sub"] = expression_tokens[0]
                     data["name"] = expression_tokens[1]
                 else:
@@ -97,7 +97,7 @@ def parse_code(code):  # returns (success, message, runnable)
                         "was expecting a declared variable name after unary operator " + expression_tokens[0])
             elif expression_tokens[1] in OPERATORS["trailing_unary_operators"]:
                 if is_active_variable(expression_tokens[0]):
-                    data["kind"] = "trailing unary"
+                    data["kind"] = "trailing_unary"
                     data["sub"] = expression_tokens[1]
                     data["name"] = expression_tokens[0]
                 else:
@@ -313,7 +313,9 @@ def parse_code(code):  # returns (success, message, runnable)
 
     def compile_scope():
         result = {"kind": "scope", "exec": [], "line": -1}
+
         scope_variables_counts.append(0)
+
         if tokens[0] == "{":
             result["line"] = increment_line("{")
             while tokens[0] != "}":
@@ -323,6 +325,7 @@ def parse_code(code):  # returns (success, message, runnable)
         else:
             result["line"] = move_line()
             result["exec"].append(compile_element())
+
         while scope_variables_counts[-1] > 0:
             scope_variables_counts[-1] -= 1
             variable_names.pop()
@@ -333,11 +336,10 @@ def parse_code(code):  # returns (success, message, runnable)
     try:
         compiled_code = compile_scope()
     except MyException as e:
-        return False, "line " + str(line + 1) + ":" + str(e) + \
-               " It appears somewhere before: " + " ".join(tokens[:5]), []
+        return False, "line " + str(line + 1) + ":" + str(e) + "\n" \
+               " It appears somewhere before: " + " ".join(tokens[:10]), []
 
-    json.dump(compiled_code, sys.stdout)
-    print()
+    compiled_code = json.dumps(compiled_code)
 
     if len(tokens) != 0:
         return False, "there must not be code out of main scope", compiled_code
