@@ -11,7 +11,7 @@ int main() {
 default_evaluate_code = """#include <iostream>
 using namespace std;
 int main() {
-    int x = 16;
+    int x = 16, y, z=123;
     if(x>12)
         x=12;
     int sum = 0;

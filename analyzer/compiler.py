@@ -375,7 +375,7 @@ def next_token(code):
     if code[:2] == "//":
         return True, code[0:code.find("\n")]
 
-    if code[0] in SINGLE_CHAR_OPERATORS:
+    if code[0] in SINGLE_CHAR_OPERATORS + (",",):
         return True, code[0]
 
     if code[0] in BRACKETS.keys():
