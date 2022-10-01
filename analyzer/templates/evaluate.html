@@ -32,8 +32,11 @@
         </button>
 
 
-        <button type="button" class="btn btn-light disabled">
-            Run Code <span class="h6">#soon, it's coming slowly</span>
+        <button type="button" class="btn btn-light" onclick="run_to(-1)">
+            Run next expression
+        </button>
+        <button type="button" class="btn btn-light" onclick="re_init()">
+            Reset
         </button>
     </div>
 
@@ -63,14 +66,18 @@
 {# CODE MIRROR SCRIPTS #}
 <script>
     let myCodeMirror = CodeMirror(document.getElementById('text_area'), {
-        value: `{{ code|default:"#include<iostream>\nusing namespace std;\nint main() {\n\t\n}\n"|safe}}`,
+        value: `{{ code|default:"#include <iostream>\nusing namespace std;\nint main() {\n\t\n}\n"|safe }}`,
         indentUnit: 4,
         lineNumbers: true,
         styleActiveLine: {nonEmpty: true},
         matchBrackets: true,
         mode: 'text/x-c++src',
         readOnly: true,
-        gutters: ["CodeMirror-linenumbers", {"className": "buttons", "style": "width:18px;"}],
+        gutters: [
+            "CodeMirror-linenumbers",
+            {"className": "run", "style": "width:18px;"},
+            {"className": "buttons", "style": "width:18px;"},
+        ],
     });
     myCodeMirror.setSize("100%", "100%");
 </script>
@@ -80,12 +87,12 @@
 
     .CodeMirror-code > div div.buttons-gutter.other-marker {
         visibility: hidden;
-        background-color: #0dcaf0;
+        background-color: yellow;
     }
 
     .CodeMirror-code > div:hover div.buttons-gutter.other-marker {
         visibility: visible;
-        background-color: #0dcaf0;
+        background-color: yellow;
     }
 
     .CodeMirror-code > div div.buttons-gutter:not(.other-marker) {
@@ -95,23 +102,46 @@
 
     .CodeMirror-code > div:hover div.buttons-gutter:not(.other-marker) {
         visibility: visible;
-        background-color: #0dcaf0;
+        background-color: yellow;
     }
 
     .CodeMirror-code div.buttons-gutter:hover > .dropdown-menu {
         display: block;
         left: 100%;
-
     }
 
 
-    .CodeMirror-code .buttons-gutter .dropdown-toggle {
+    .CodeMirror-code .buttons-gutter .dropdown-toggle, .CodeMirror-code .run-gutter .dropdown-toggle {
         color: black;
         background-color: inherit;
     }
 
     .submenu:hover > .dropdown-submenu {
         display: block;
+    }
+
+    .CodeMirror-code > div div.run-gutter {
+        visibility: hidden;
+        background-color: #0dcaf0;
+    }
+
+    .CodeMirror-code > div:hover div.run-gutter.can-appear {
+        visibility: visible;
+        background-color: #0dcaf0;
+    }
+
+    .CodeMirror-code > div div.run-gutter.active-run-line.btn-group {
+    {#LOL added .btn-group to make css prefer this rule over the previous one#}
+        visibility: visible;
+        background-color: #1cf00d;
+    }
+
+    .CodeMirror-linewidget .badge {
+        transition-duration: 1s;
+    }
+
+    .CodeMirror-linewidget .badge.bg-updated {
+        transition-duration: 0s;
     }
 </style>
 <script src="{% static 'markers.js' %}"></script>
@@ -132,43 +162,79 @@
         myCodeMirror.getDoc().setGutterMarker(n, "buttons", marker);
     }
 
+    function makeRunMarker(n) {
+        let marker = document.createElement("div");
+        marker.innerHTML = `<button type="button" class="btn btn-info dropdown-toggle py-0 px-1 m-0" onclick="run_to(${n})"> </button>`;
+
+        marker.classList.add("btn-group");
+        marker.classList.add("run-gutter");
+        marker.classList.add("p-0");
+        marker.classList.add("border-0");
+        marker.classList.add("dropend");
+
+        myCodeMirror.getDoc().setGutterMarker(n, "run", marker);
+    }
+
+    for (let i = 0; i < myCodeMirror.getDoc().lineCount(); i++) {
+        makeRunMarker(i);
+    }
+
     function gutterWidth() {
         return myCodeMirror.getGutterElement().clientWidth;
     }
 
-    function addVariableWidget(n) {
+    function addVariableWidget(n, name = false, value = false) {
         let currentLine = myCodeMirror.getDoc().getLine(n);
         let int_position = currentLine.indexOf("int");
-        let int_declaration_end = int_position + currentLine.slice(int_position).indexOf(";");
-        currentLine = currentLine.slice(int_position, int_declaration_end);
-
         let offset = myCodeMirror.charCoords({"line": n, "ch": int_position}).left - gutterWidth();
-
-        currentLine.trim().slice(4).trim().split(",").map(p => p.split("=").map(it => it.trim()))
-            .map(p => ({"name": p[0], "value": (p.size === 1 ? "undef" : p[1])}))
-            .forEach(p => {
-                myCodeMirror.getDoc().addLineWidget(n, int_widget(p.name, p.value, offset));
-            });
+        myCodeMirror.getDoc().addLineWidget(n, int_widget(name, value, offset));
     }
 
-    {% for line in lines %}
-        makeButtonMarker({{ forloop.counter0 }}, "{{ line }}");
-        {% if line == "int" or line == "for" %}
-            addVariableWidget({{ forloop.counter0 }});
-        {% endif %}
-    {% endfor %}
+    let lines = {{ lines|safe }};
+    for (let i = 0; i < myCodeMirror.getDoc().lineCount() && i < lines.length; i++) {
+        makeButtonMarker(i, lines[i])
+    }
 
 </script>
 
 {# EXECUTE CODE ON CLIENT SIDE #}
 <script>
     let runnable = {{ runnable|safe }};
+
     let steps = []
     let variables = []
     let variables_count = []
+    let timeouts = {};
+    let last_line = -1;
+    let position = 0;
 
-    function event_step(line, action, name, value = undefined) {
-        steps.push({"line": line, "action": action, "name": name, "value": value});
+    function re_init() {
+        let interval = steps.length ? 750 / (steps.length - position) : 1;
+        let timed_clear = () => setTimeout(() => {
+            if (position < steps.length) {
+                run_to(-1);
+                timed_clear();
+            } else {
+                clear_run_button_class();
+
+                steps = []
+                variables = []
+                variables_count = []
+
+                walk(runnable);
+
+                timeouts = {};
+                last_line = steps[0].run_line;
+                position = 0;
+
+                set_run_button_class(last_line);
+            }
+        }, interval);
+        timed_clear();
+    }
+
+    function event_step(run_line, line, action, name, value = undefined) {
+        steps.push({"run_line": run_line, "line": line, "action": action, "name": name, "value": value});
     }
 
     function new_variable(line, variable_name, variable_value) {
@@ -193,7 +259,7 @@
             while (count > 0) {
                 count -= 1;
                 let variable = variables.pop();
-                event_step(variable.line, "remove_variable", variable.name)
+                event_step(-1, variable.line, "remove_variable", variable.name, -1)
             }
         } else if (run_object.kind === "declaration") {
             for (const exec_element of run_object.exec) {
@@ -201,7 +267,7 @@
                 let variable_value = exec_element.exec.undefined ? "undefined" : walk(exec_element.exec.value)
                 let variable = new_variable(exec_element.line, variable_name, variable_value);
                 variables.push(variable)
-                event_step(variable.line, "add_variable", variable.name, variable.value)
+                event_step(exec_element.line, variable.line, "add_variable", variable.name, variable.value)
                 variables_count[variables_count.length - 1]++;
             }
         } else if (run_object.kind === "if") {
@@ -222,7 +288,7 @@
             while (count > 0) {
                 count -= 1;
                 let variable = variables.pop();
-                event_step(variable.line, "remove_variable", variable.name)
+                event_step(-1, variable.line, "remove_variable", variable.name, -1)
             }
         } else if (run_object.kind === "while") {
             while (walk(run_object.exec[0])) {
@@ -251,7 +317,7 @@
                     variable.value /= value;
                     variable.value |= 0;
                 }
-                event_step(variable.line, "update_variable", variable_name, variable.value);
+                event_step(run_object.line, variable.line, "update_variable", variable_name, variable.value);
                 return variable.value;
             } else if (kind === "variable_access") {
                 let variable_name = run_object.exec.name;
@@ -263,11 +329,11 @@
                 let variable = get_variable(variable_name);
                 if (operator === "++") {
                     variable.value += 1;
-                    event_step(variable.line, "update_variable", variable_name, variable.value);
+                    event_step(run_object.line, variable.line, "update_variable", variable_name, variable.value);
                     return variable.value;
                 } else if (operator === "--") {
                     variable.value -= 1;
-                    event_step(variable.line, "update_variable", variable_name, variable.value);
+                    event_step(run_object.line, variable.line, "update_variable", variable_name, variable.value);
                     return variable.value;
                 } else {
                     return undefined;
@@ -278,11 +344,11 @@
                 let variable = get_variable(variable_name);
                 if (operator === "++") {
                     variable.value += 1;
-                    event_step(variable.line, "update_variable", variable_name ,variable.value);
+                    event_step(run_object.line, variable.line, "update_variable", variable_name, variable.value);
                     return variable.value - 1;
                 } else if (operator === "--") {
                     variable.value -= 1;
-                    event_step(variable.line, "update_variable", variable_name, variable.value);
+                    event_step(run_object.line, variable.line, "update_variable", variable_name, variable.value);
                     return variable.value + 1;
                 } else {
                     return undefined;
@@ -330,9 +396,137 @@
         }
     }
 
-    walk(runnable);
+    function update_badge(step) {
+        for (const widget of myCodeMirror.getDoc().lineInfo(step.line).widgets) {
+            if (widget.node.innerHTML.startsWith(step.name)) {
+                widget.node.classList.add("bg-success");
+                widget.node.classList.add("bg-updated");
+                widget.node.classList.remove("bg-primary");
+                if (step.name in timeouts) {
+                    clearTimeout(timeouts[step.name]);
+                }
+                timeouts[step.name] = setTimeout(() => {
+                    widget.node.classList.remove("bg-success");
+                    widget.node.classList.remove("bg-updated");
+                    widget.node.classList.add("bg-primary");
+                    delete timeouts[step.name];
+                }, 1500);
+            }
+        }
+    }
 
+    function set_run_button_class(line) {
+        let gutter = myCodeMirror.getDoc().lineInfo(line).gutterMarkers["run"];
+        gutter.classList.add("active-run-line");
+        for (let i = position; i < steps.length; i++) {
+            if (steps[i].run_line === -1)
+                continue;
+            let gutter = myCodeMirror.getDoc().lineInfo(steps[i].run_line).gutterMarkers["run"];
+            gutter.classList.add("can-appear");
+            gutter = myCodeMirror.getDoc().lineInfo(steps[i].run_line + 1).gutterMarkers["run"];
+            gutter.classList.add("can-appear");
+        }
+    }
 
+    function clear_run_button_class() {
+        for (let i = 0; i < myCodeMirror.getDoc().lineCount(); i++) {
+            let gutter = myCodeMirror.getDoc().lineInfo(i).gutterMarkers["run"];
+            gutter.classList.remove("active-run-line");
+            gutter.classList.remove("can-appear");
+        }
+    }
+
+    function activate() {
+        let step = steps[position]
+        if (step.action === "add_variable") {
+            addVariableWidget(step.line, step.name, step.value);
+            update_badge(step);
+        } else if (step.action === "remove_variable") {
+            for (const widget of myCodeMirror.getDoc().lineInfo(step.line).widgets) {
+                if (widget.node.innerHTML.startsWith(step.name)) {
+                    widget.clear()
+                }
+            }
+        } else if (step.action === "update_variable") {
+            for (const widget of myCodeMirror.getDoc().lineInfo(step.line).widgets) {
+                if (widget.node.innerHTML.startsWith(step.name)) {
+                    widget.node.innerHTML = `${step.name} = ${step.value}`;
+                }
+            }
+            update_badge(step);
+        }
+
+        clear_run_button_class();
+        position++;
+        if (position < steps.length && steps[position].run_line !== -1)
+            last_line = steps[position].run_line;
+        let i = position;
+        while (i < steps.length && steps[i].run_line === -1) i++;
+        if (i < steps.length) {
+            set_run_button_class(steps[position].run_line);
+        } else {
+            set_run_button_class(13);
+        }
+    }
+
+    function run_to(n) {
+        if (position >= steps.length)
+            return;
+
+        if (n === last_line)
+            n = -1;
+
+        if (n !== -1) {
+            let found = false;
+            for (let i = position; i < steps.length; i++) {
+                if (steps[i].run_line !== -1) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+                n = -1;
+        }
+
+        if (n === -1) {
+            activate();
+            return;
+        }
+
+        if (n < last_line) {
+            for (let i = position; i < steps.length; i++) {
+                if (steps[i].run_line !== -1 && steps[i].run_line <= n) {
+                    while (position < i) {
+                        activate();
+                    }
+                    break;
+                }
+            }
+        }
+        if (n >= last_line) {
+            while (position < steps.length) {
+                if (steps[position].run_line < n) {
+                    let do_activate = false
+                    if (steps[position].run_line === -1) {
+                        for (let j = position; j < steps.length; j++) {
+                            if (steps[j].run_line !== -1 && steps[j].run_line <= n) {
+                                do_activate = true;
+                                break;
+                            }
+                        }
+                    } else {
+                        do_activate = true;
+                    }
+                    if (!do_activate) break;
+                    activate()
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    re_init();
 </script>
 
 </body>

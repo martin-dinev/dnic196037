@@ -15,7 +15,6 @@ let for_marker = () => {
             <a class="dropdown-item" href="#">Learn about for loops</a>
             <a class="dropdown-item" href="#">Unravel for loop</a>
             <a class="dropdown-item" href="#">Toggle variable tracking</a>
-            <a class="dropdown-item" href="#">Execute code up to this line</a>
         </div>
     `;
     applyMarkerClasses(marker);
@@ -29,7 +28,6 @@ let if_marker = () => {
                 aria-expanded="false"> </button>
         <div class="dropdown-menu dropdown-menu-end text-success">
             <a class="dropdown-item" href="#">Learn about if</a>
-            <a class="dropdown-item" href="#">Execute code up to this line</a>
         </div>
     `;
     applyMarkerClasses(marker);
@@ -42,7 +40,6 @@ let main_marker = () => {
                 aria-expanded="false"> </button>
         <div class="dropdown-menu dropdown-menu-end text-success">
             <a class="dropdown-item" href="#">Learn about main</a>
-            <a class="dropdown-item" href="#">Execute code up to this line</a>
         </div>
     `;
     applyMarkerClasses(marker);
@@ -57,7 +54,6 @@ let int_marker = () => {
         <div class="dropdown-menu dropdown-menu-end text-success">
             <a class="dropdown-item" href="#">Learn about declarations</a>
             <a class="dropdown-item" href="#">Toggle variable tracking</a>
-            <a class="dropdown-item" href="#">Execute code up to this line</a>
         </div>
     `;
     applyMarkerClasses(marker);
@@ -70,12 +66,11 @@ let other_marker = () => {
         <button type="button" class="btn btn-info dropdown-toggle py-0 px-1 m-0" data-bs-toggle="dropdown" 
                 aria-expanded="false"> </button>
         <div class="dropdown-menu dropdown-menu-end text-success">
-            <a class="dropdown-item" href="#">Execute code up to this line</a>
             <div class="submenu position-relative">
                 <div class="dropdown-item disabled text-dark">Submenu &raquo;</div>
                 <div class = "dropdown-menu dropdown-submenu start-100 position-absolute" style="top: -7px;">
-                    <a class="dropdown-item" href="#">Nested menu item</a>
-                    <a class="dropdown-item" href="#">Nested menu item</a>
+                    <a class="dropdown-item" href="#">Nested menu testing</a>
+                    <a class="dropdown-item" href="#">Break down expression</a>
                 </div>
             </div>
         </div>
