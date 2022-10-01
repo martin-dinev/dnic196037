@@ -127,10 +127,6 @@
         myCodeMirror.off("change", code_changed);
     }
 
-    {# TODO remove this, it's just for debugging #}
-    {#    {% if logic.compiled %}#}
-    {#        console.log({{ logic.executable|safe }})#}
-    {#    {% endif %}#}
 </script>
 
 {% if logic.compiled == False %}
