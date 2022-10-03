@@ -23,6 +23,11 @@
 </head>
 <body onload="body_loaded();">
 <div>
+    {# EXAMPLE CODE #}
+    <form id="example_code_form" action="/" method="POST">
+        {% csrf_token %}
+        <input type="hidden" name="code" value=""/>
+    </form>
     {# COMPILE #}
     <form id="compile_form" action="/" method="POST">
         {% csrf_token %}
@@ -52,6 +57,11 @@
                 <li><a class="dropdown-item disabled" href="#">Python</a></li>
             </ul>
         </div>
+
+        {# Example Code #}
+        <button type="button" onclick="example_code_form();" id="example_code_button" class="btn btn-light">
+            Load Example
+        </button>
 
         {# COMPILE #}
         <button type="button" onclick="compile_form();" id="compile_button"
@@ -85,6 +95,13 @@
         autoCloseBrackets: true,
         autofocus: true,
     });
+
+
+    function example_code_form() {
+        let my_form = document.forms['example_code_form'];
+        my_form.elements["code"].value = `{{ logic.get_example_code|safe }}`;
+        document.getElementById("example_code_form").submit();
+    }
 
     function compile_form() {
         let my_form = document.forms['compile_form'];

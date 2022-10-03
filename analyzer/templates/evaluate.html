@@ -131,8 +131,7 @@
     }
 
     .CodeMirror-code > div div.run-gutter.active-run-line.btn-group {
-    {#LOL added .btn-group to make css prefer this rule over the previous one#}
-        visibility: visible;
+    {#LOL added .btn-group to make css prefer this rule over the previous one#} visibility: visible;
         background-color: #1cf00d;
     }
 
@@ -224,10 +223,11 @@
                 walk(runnable);
 
                 timeouts = {};
-                last_line = steps[0].run_line;
                 position = 0;
-
-                set_run_button_class(last_line);
+                if (steps.length > 0) {
+                    last_line = steps[0].run_line;
+                    set_run_button_class(last_line);
+                }
             }
         }, interval);
         timed_clear();
@@ -426,6 +426,8 @@
             gutter = myCodeMirror.getDoc().lineInfo(steps[i].run_line + 1).gutterMarkers["run"];
             gutter.classList.add("can-appear");
         }
+        gutter = myCodeMirror.getDoc().lineInfo(myCodeMirror.lineCount()-1).gutterMarkers["run"];
+        gutter.classList.add("can-appear");
     }
 
     function clear_run_button_class() {
@@ -465,7 +467,7 @@
         if (i < steps.length) {
             set_run_button_class(steps[position].run_line);
         } else {
-            set_run_button_class(13);
+            set_run_button_class(myCodeMirror.lineCount()-1);
         }
     }
 

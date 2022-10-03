@@ -29,6 +29,7 @@ class LOGIC:
         self.compiled = compiled
         self.message = message
         self.executable = executable
+
     def get_compile_button_class(self):
         return "btn " + ("btn-light" if self.compiled is None else ("btn-success" if self.compiled else "btn-warning"))
 
@@ -38,6 +39,10 @@ class LOGIC:
     @staticmethod
     def get_default_code():
         return default_welcome_code
+
+    @staticmethod
+    def get_example_code():
+        return default_evaluate_code
 
 
 def welcome(request):
@@ -61,10 +66,6 @@ def evaluation_service(request):
     compiled, message, runnable = parse_code(code)
     if not compiled:
         return redirect("/")
-
-    compiled, message, runnable = parse_code(default_evaluate_code)
-
-    code = default_evaluate_code + "\n//Above is an example code. Here is the code that you compiled:\n" + code
 
     lines = [
         "for" if "for" in line else "main" if "main" in line else "if" if "if" in line else "int" if "int" in line else "other"

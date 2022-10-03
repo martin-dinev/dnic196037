@@ -1,5 +1,4 @@
 import json
-import sys
 from itertools import takewhile
 
 IOSTREAM_LINE = "#include <iostream>"
@@ -106,7 +105,6 @@ def parse_code(code):  # returns (success, message, runnable)
             else:
                 raise MyException("was expecting a unary operator and a declared variable name")
         else:
-            top_level = []
             level = 0
             level_zero_tokens = 0
             latest_first = -1
@@ -131,7 +129,7 @@ def parse_code(code):  # returns (success, message, runnable)
                             data["value"] = compile_expression_from_tokens(expression_tokens[2:])
                         else:
                             raise MyException(
-                                "was expecting a declared variable name before assignemnt operator " + token)
+                                "was expecting a declared variable name before assignment operator " + token)
                         break
                     elif token in OPERATORS["second_operators"]:
                         latest_second = i

@@ -34,7 +34,7 @@ let if_marker = () => {
     return marker;
 }
 let main_marker = () => {
-    var marker = document.createElement("div");
+    const marker = document.createElement("div");
     marker.innerHTML = `
         <button type="button" class="btn btn-info dropdown-toggle py-0 px-1 m-0" data-bs-toggle="dropdown" 
                 aria-expanded="false"> </button>
@@ -47,7 +47,7 @@ let main_marker = () => {
 }
 
 let int_marker = () => {
-    var marker = document.createElement("div");
+    const marker = document.createElement("div");
     marker.innerHTML = `
         <button type="button" class="btn btn-info dropdown-toggle py-0 px-1 m-0" data-bs-toggle="dropdown" 
                 aria-expanded="false"> </button>
@@ -61,7 +61,7 @@ let int_marker = () => {
 }
 
 let other_marker = () => {
-    var marker = document.createElement("div");
+    const marker = document.createElement("div");
     marker.innerHTML = `
         <button type="button" class="btn btn-info dropdown-toggle py-0 px-1 m-0" data-bs-toggle="dropdown" 
                 aria-expanded="false"> </button>
