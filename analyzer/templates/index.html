@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <title>CodeHelper SmartStrings</title>
+
+    <script type="text/javascript" src="https://code.jquery.com/jquery-1.7.1.min.js"></script>
+
     {% load static %}
 
     <script src="{% static 'codemirror-5.65.8/lib/codemirror.js' %}"></script>
@@ -116,7 +119,10 @@
     }
 
     function body_loaded() {
-        setTimeout(clear_compiled_button_status, 10000);
+        setTimeout(() => {
+            clear_compiled_button_status();
+            $(".alert").alert('close');
+        }, 10000);
     }
 
     function clear_compiled_button_status() {
@@ -141,14 +147,25 @@
 
     function code_changed() {
         clear_button_status();
+        $(".alert").alert('close');
         myCodeMirror.off("change", code_changed);
     }
 
 </script>
 
 {% if logic.compiled == False %}
-    <div class="alert alert-warning alert-dismissible fade show position-absolute end-0 bottom-0" role="alert">
+    <div class="alert alert-warning alert-dismissible fade show position-absolute end-0 bottom-0" role="alert"
+         style="margin-right: var(--bs-alert-margin-bottom);">
         {{ logic.message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+{% endif %}
+
+
+{% if logic.compiled == True %}
+    <div class="alert alert-success alert-dismissible fade show position-absolute bottom-0 end-0" role="alert"
+         style="margin-right: var(--bs-alert-margin-bottom);">
+        Code was compiled successfully, you can proceed to Evaluate!
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>
 {% endif %}
